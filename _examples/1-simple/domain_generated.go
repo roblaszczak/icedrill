@@ -54,6 +54,6 @@ func (a *Account) update(event icedrill.Event) error {
 	return nil
 }
 
-func (a *Account) Version() int64 {
+func (a *Account) Version() uint64 {
 	return a.es.Version
 }

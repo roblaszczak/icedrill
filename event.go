@@ -3,6 +3,6 @@ package icedrill
 type Event interface{}
 
 type EventSourced struct {
-	Version int64
+	Version uint64
 	Changes []Event
 }

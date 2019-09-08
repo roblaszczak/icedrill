@@ -1,12 +1,12 @@
-package placeholder
+package {{ .AggregatePackage }}
 
 import (
 	"github.com/pkg/errors"
 	"github.com/roblaszczak/icedrill"
 )
 
-func NewAggregateTypeFromHistory(events []icedrill.Event) (*AggregateType, error) {
-	a := &AggregateType{}
+func New{{ .AggregateType }}FromHistory(events []icedrill.Event) (*{{ .AggregateType }}, error) {
+	a := &{{ .AggregateType }}{}
 
 	for _, e := range events {
 		err := a.update(e)
@@ -20,7 +20,7 @@ func NewAggregateTypeFromHistory(events []icedrill.Event) (*AggregateType, error
 	return a, nil
 }
 
-func (a *AggregateType) recordThat(event icedrill.Event) {
+func (a *{{ .AggregateType }}) recordThat(event icedrill.Event) {
 	if event == nil {
 		return
 	}
@@ -30,14 +30,17 @@ func (a *AggregateType) recordThat(event icedrill.Event) {
 
 // todo - test without pitor
 // todo - does we need pop?
-func (a *AggregateType) PopChanges() []icedrill.Event {
+func (a *{{ .AggregateType }}) PopChanges() []icedrill.Event {
 	defer func() { a.es.Changes = nil }()
 	return a.es.Changes
 }
 
-func (a *AggregateType) update(event icedrill.Event) error {
+func (a *{{ .AggregateType }}) update(event icedrill.Event) error {
 	switch v := event.(type) {
-	//[GENERATE: EVENT HANDLERS]
+	{{ range $key, $eventName := .Events -}}
+		case {{ $eventName }}:
+			a.handle{{ $eventName }}(v)
+	{{ end -}}
 	default:
 		return errors.Errorf("event %T is not supported", v)
 	}
@@ -47,6 +50,6 @@ func (a *AggregateType) update(event icedrill.Event) error {
 	return nil
 }
 
-func (a *AggregateType) Version() int64 {
+func (a *{{ .AggregateType }}) Version() uint64 {
 	return a.es.Version
 }

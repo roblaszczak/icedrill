@@ -51,16 +51,15 @@ func (a *Account) Withdraw(amount int) error {
 	}
 
 	// todo - how to avoid calling handleWithdrawed instead of update?
-	a.update(Withdrawed{amount})
-	return nil
+	return a.update(Withdrawed{amount})
 }
 
 func (a *Account) handleWithdrawed(w Withdrawed) {
 	a.balance -= w.Amount
 }
 
-func (a *Account) Deposit(amount int) {
-	a.update(Deposited{amount})
+func (a *Account) Deposit(amount int) error {
+	return a.update(Deposited{amount})
 }
 
 func (a *Account) handleDeposited(d Deposited) {
