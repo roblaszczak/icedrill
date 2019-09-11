@@ -53,3 +53,8 @@ func (a *{{ .AggregateType }}) update(event icedrill.Event) error {
 func (a *{{ .AggregateType }}) Version() uint64 {
 	return a.es.Version
 }
+
+type {{ .AggregateType }}Repository interface {
+	Save(aggregate *{{ .AggregateType }}) error
+	Find(id {{ .IDType }}) (*{{ .AggregateType }}, error)
+}

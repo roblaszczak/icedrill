@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -14,6 +15,7 @@ import (
 	"text/template"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/gobuffalo/packr"
 	"github.com/pkg/errors"
 )
 
@@ -22,37 +24,71 @@ var logger = log.New(os.Stderr, "[icedrill] ", log.LstdFlags)
 const HandlerPrefix = "handle"
 
 func main() {
-	aggregate, err := findAggregate("Account", "UUID")
+	// todo - support dynamic templates
+	box := packr.NewBox("../../templates")
+
+	aggregatePtr := flag.String("aggregate", "", "aggregate name")
+	idGetterPtr := flag.String("id-getter", "", "aggregate ID getter method")
+	eventstore := flag.String("eventstore", "", "eventstore template to use")
+	eventstoreDirectory := flag.String("eventstore-dir", ".", "directory, where put generated event store")
+
+	flag.Parse()
+
+	if *aggregatePtr == "" {
+		panic("missing -aggregate")
+	}
+	if *idGetterPtr == "" {
+		panic("missing -id-getter")
+	}
+	if *eventstore == "" {
+		panic("missing -eventstore")
+	}
+
+	aggregateData, err := findAggregate(*aggregatePtr, *idGetterPtr)
 	if err != nil {
 		panic(err)
 	}
 
-	spew.Dump(aggregate)
+	if *eventstoreDirectory != "." {
+		aggregateData.InfraInDifferentPackage = true
+
+	}
+
+	spew.Dump(aggregateData)
 
 	templateFile(
-		"/home/robert/src/icedrill/generator/placeholder/common.tpl",
-		"/home/robert/src/icedrill/_examples/1-simple/domain_generated.go",
-		aggregate,
+		"common/common.tpl",
+		"domain_generated.go",
+		box,
+		aggregateData,
 	)
+
+	// todo - fix it
+	if aggregateData.InfraInDifferentPackage {
+		aggregateData.AggregateTypesPrefix = aggregateData.AggregatePackage + "."
+	}
+	spew.Dump(aggregateData)
+
 	templateFile(
-		"/home/robert/src/icedrill/generator/eventstore/sqlx/template.tpl",
-		"/home/robert/src/icedrill/_examples/1-simple/repo_generated.go",
-		aggregate,
+		fmt.Sprintf("eventstore/%s/template.tpl", *eventstore),
+		filepath.Join(*eventstoreDirectory, "repo_generated.go"),
+		box,
+		aggregateData,
 	)
 }
 
 func templateFile(
-	file string,
+	tplFile string,
 	dest string,
+	box packr.Box,
 	aggregate aggregateData,
 ) {
-	commnTpl, err := ioutil.ReadFile(file)
+	tpl, err := box.FindString(tplFile)
 	if err != nil {
 		panic(err)
 	}
-	commnTplStr := string(commnTpl)
 
-	t := template.Must(template.New("tpl").Parse(commnTplStr))
+	t := template.Must(template.New("tpl").Parse(tpl))
 
 	b := bytes.NewBuffer(nil)
 
@@ -71,12 +107,14 @@ func templateFile(
 }
 
 type aggregateData struct {
-	AggregatePackage string
-	AggregateType    string
-	IDGetter         string
-	IDType           string
-	Events           []string
-	HaveEventSourced bool
+	AggregateTypesPrefix    string
+	AggregatePackage        string
+	AggregateType           string
+	IDGetter                string
+	IDType                  string
+	Events                  []string
+	HaveEventSourced        bool
+	InfraInDifferentPackage bool
 }
 
 func findAggregate(name string, idGetterName string) (aggregateData, error) {
@@ -99,6 +137,8 @@ func findAggregate(name string, idGetterName string) (aggregateData, error) {
 		if err != nil {
 			panic(err)
 		}
+
+		spew.Dump(f.Package)
 
 		fmt.Println(f.Name)
 		aggregate.AggregatePackage = f.Name.Name

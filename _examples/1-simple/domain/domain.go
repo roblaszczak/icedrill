@@ -1,4 +1,4 @@
-package main
+package domain
 
 import (
 	"errors"
@@ -21,7 +21,7 @@ type Deposited struct {
 }
 
 // todo - just idea
-//go:generate watermill-es generate -aggregate=Account -idGetter=UUID
+//go:generate icedrill -aggregate=Account -id-getter=UUID -eventstore=sqlx -eventstore-dir=../infrastructure
 
 type Account struct {
 	es icedrill.EventSourced // todo - how to make it private?
@@ -30,11 +30,13 @@ type Account struct {
 	balance int
 }
 
-func CreateNewAccount(uuid AccountUUID) *Account {
+func CreateNewAccount(uuid AccountUUID) (*Account, error) {
 	a := &Account{}
-	a.update(AccountCreated{uuid})
+	if err := a.update(AccountCreated{uuid}); err != nil {
+		return nil, err
+	}
 
-	return a
+	return a, nil
 }
 
 func (a Account) UUID() AccountUUID {

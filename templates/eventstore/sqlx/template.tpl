@@ -1,4 +1,4 @@
-package {{ .AggregatePackage }}
+package infrastructure
 
 import (
 	"encoding/json"
@@ -45,11 +45,11 @@ type EventTransport struct {
 	EventNo       int           `db:"event_no"`
 	EventName     string        `db:"event_name"`
 	Payload       string        `db:"event_payload"`
-	AggregateID   {{ .IDType }} `db:"aggregate_id"`
+	AggregateID   {{ .AggregateTypesPrefix }}{{ .IDType }} `db:"aggregate_id"`
 	AggregateType string        `db:"aggregate_type"`
 }
 
-func (r *Repository) Save(aggregate *{{ .AggregateType }}) error {
+func (r *Repository) Save(aggregate *{{ .AggregateTypesPrefix }}{{ .AggregateType }}) error {
 	events := aggregate.PopChanges()
 
 	for _, event := range events {
@@ -83,20 +83,20 @@ func (r *Repository) Save(aggregate *{{ .AggregateType }}) error {
 	return nil
 }
 
-func (r Repository) Find(id {{ .IDType }}) (*{{ .AggregateType }}, error) {
+func (r Repository) Find(id {{ .AggregateTypesPrefix }}{{ .IDType }}) (*{{ .AggregateTypesPrefix }}{{ .AggregateType }}, error) {
 	events, err := r.findEvents(id)
 	if err != nil {
 		return nil, err
 	}
 
-	return New{{ .AggregateType }}FromHistory(events)
+	return {{ .AggregateTypesPrefix }}New{{ .AggregateType }}FromHistory(events)
 }
 
 func (r Repository) aggregateType() string {
-	return "{{ .AggregateType }}"
+	return "{{ .AggregateTypesPrefix }}{{ .AggregateType }}"
 }
 
-func (r Repository) findEvents(id {{ .IDType }}) ([]icedrill.Event, error) {
+func (r Repository) findEvents(id {{ .AggregateTypesPrefix }}{{ .IDType }}) ([]icedrill.Event, error) {
 	var dbEvents []EventTransport
 	var events []icedrill.Event
 
@@ -115,8 +115,8 @@ func (r Repository) findEvents(id {{ .IDType }}) ([]icedrill.Event, error) {
 
 		switch dbEvent.EventName {
 			{{ range $key, $eventName := .Events -}}
-				case "{{ $eventName }}":
-					typedEvent := {{ $eventName }}{}
+				case "{{ $.AggregateTypesPrefix }}{{ $eventName }}":
+					typedEvent := {{ $.AggregateTypesPrefix }}{{ $eventName }}{}
 					if err := json.Unmarshal([]byte(dbEvent.Payload), &typedEvent); err != nil {
 						// todo - better
 						panic(err)
@@ -135,11 +135,5 @@ func (r Repository) findEvents(id {{ .IDType }}) ([]icedrill.Event, error) {
 
 
 func (r Repository) generateEventName(event icedrill.Event) string {
-	nameParts := strings.Split(fmt.Sprintf("%T", event), ".")
-
-	if len(nameParts) == 1 {
-		return nameParts[0]
-	}
-
-	return nameParts[1]
+    return fmt.Sprintf("%T", event)
 }

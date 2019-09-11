@@ -4,12 +4,18 @@ import (
 	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/roblaszczak/icedrill/_examples/1-simple/domain"
+	"github.com/roblaszczak/icedrill/_examples/1-simple/infrastructure"
 )
 
 func main() {
-	repo := NewRepository()
+	repo := infrastructure.NewRepository()
 
-	a1 := CreateNewAccount(AccountUUID(watermill.NewULID()))
+	a1, err := domain.CreateNewAccount(domain.AccountUUID(watermill.NewULID()))
+	if err != nil {
+		panic(err)
+	}
+
 	if err := a1.Deposit(10); err != nil {
 		panic(err)
 	}
